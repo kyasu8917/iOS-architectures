@@ -180,3 +180,76 @@ Martin Fowler氏によると、レイヤーという概念は90年代のクラ�
 それを解決するために導入されたのが、依存関係逆転の原則だった。Domain層は自分自身が使用するための、Data層が従うべきインターフェイスを定義し、Data層がそのインターフェイスに依存することで、Domain層をData層から引き剥がすことができた。
 
 ![](image/domain_data.png)
+
+## Hexagonal Acthitecture
+Data層に対する依存関係の逆転によってData層⇄ドメイン層は疎結合となったが、同じ問題意識はPresentation層にも表出していた。
+そこでPresentationとData層をどちらも「外側」と捉え、六角形を用いでレイヤーを表現したのがHexagonal　Architectureだった。
+
+![](image/hexagonal_architecture.png)
+
+六角形であることに特に意味はなく、だいたい接続すべきレイヤーは六個以下になる、ということで付けられた名前だったが、のちにPort And Adapters Architectureと呼ばれるようになる。
+
+アプリケーションは外部との接続のため、「目的」の単位で抽象化されたポートを提供している。ポートには外部からアダプタが差し込まれる（GoFのデザインパターンでいうAdapterパターンと同義）。アダプタは差し込まれる外部モジュールの実装を隠蔽し、ポート書き対するインターフェースへ変換する。（例：Model⇄JSON）
+
+ポートにはプライマリポートとセカンダリポートがある。前者は「アプリケーションを駆動する」、後者は「アプリケーションによって駆動される」。アプリケーションを駆動するのはユーザーのインタラクションを受け取るViewであるので、ここではプレゼンテーション層がプライマリーポートであると言える。データ層はアプリケーションによって操作されるので、セカンダリポートであると言える。
+
+## Onion Architecture
+2008年、Jeffery Palermo氏によって提案されたOnion Architectureは、Hexagonal Architectureとアイデアは変わらない。Palermo氏によるとOnion Architectureの教義は
+- アプリケーションは自立したオブジェクトモデルを取り囲むように作られる
+- 内側のレイヤーはインターフェースを定義し、外側のレイヤーはそれを実装する
+- 依存の方向は外側から内側
+- Application Coreはインフラストラクチャ（Data層）抜きでコンパイル・実行できる
+
+![](image/onion_architecture.png)
+
+## Clean Architecture
+2012年、Uncle Bobが[ブログ記事](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)で提案したのがClean Architectureだった。これは下記のような、近年提案された様々なアーキテクチャのコンセプトを統合するものだった。
+- Hexagonal Architecture
+- Onion Architecture
+- Screaming Architecture[^1]
+- Data, Contect and Interaction (DCI)
+- Boundary Control Entity(BCE)
+
+いずれも変化の激しい部分からビジネスロジックをいかに切り離して保護するかを異なる視点で捉えたアーキテクチャだった。
+
+![](image/clean_architecture.jpg)
+
+これも思想としてはOnion Architectureとほぼ同様のものである。
+
+[^1]: https://blog.cleancoder.com/uncle-bob/2011/09/30/Screaming-Architecture.html
+
+
+## システムアーキテクチャまとめ
+つまるところ、システムアーキテクチャというのはいかにドメインモデルを、プレゼンテーションはデータ永続化の都合から守り切るか、という思想。
+結局はインターフェースを定義してドメインを他のレイヤーから疎結合に保とうね、ということ。
+
+# モバイルアプリのアーキテクチャ 画面遷移
+## CoordinatorパターンとMVVM-C
+2015年、Soroush Khanlou氏が発表したのがCoordinatorパターンだった。（https://www.slideshare.net/secret/3jJlEE1weo0RRl , https://khanlou.com/2015/01/the-coordinator/ ）
+
+Coordinatorはアプリのルートに存在するApplication　Coordinatorを頂点とした階層構造によって画面遷移を表現する。
+
+## RouterパターンとVIPER
+Routerパターンを取り入れたアーキテクチャとして有名なのは2013年にMutualMobile社が発表したVIPERである。また、2017年にUber社がリリースしたRIBsアーキテクチャ(https://github.com/uber/RIBs)でも、Routerパターンが採用されている。
+VIPERとはView, Interactor, Presenter, Entity, Routingの頭文字で、この5つの部品から構成されている。
+VIPERはClean Architecture + MVP + Routerのアーキテクチャと言える。
+
+![](image/router.png)
+
+PresenterがViewへの参照を持ち、直接更新する点はMVP(Passive View)と同様。MutualMobile車はInteractorやPresenterについてPONSO(Plain Old NSOBject: 何も継承しないシンプルな型)であることを強調しているため、それが（MVVMではなく）MVPを採用した理由と考えられる。
+
+## Micro View Controller
+2018年にmercari社のtarnon氏がMicro View Controllerというアーキテクチャを提唱した。(https://crash.academy/video/332/1660)
+
+このアーキテクチャは、UIButtonのような小さなコンポーネントすらUIViewControllerでラップするようにした。UIViewControllerのインスタンスは親のNavigationController経由で取得できるので、UIViewControllerで画面遷移をハンドリングする必要などない、という思想だった。
+Micro View Controllerは、RouterやCoordinatorと異なり、UIViewControllerが画面遷移ロジックを持つことを容認している。その代わりにViewControllerの責務を限りなく小さくし、依存を排除し、ViewControllerの差し替えを簡単に行えるようにフレームワークのサポートを充実させることで、肥大化や密結合への対処としている。
+
+セッション動画の要約は下記
+> tarnon氏はマイクロサービスの思想をiOSに適用したものとする。ViewControllerが肥大化することは「仕方がない」「どうしようもない」。MVVM等のレイヤードアーキテクチャではそれを防ぐことはできない。
+再帰的に細分化可能な構造をつくるために、ViewControllerの階層構造を用いた。そうすることで各ViewControllerにエンジニアをアサインすることでコンフリクトが起こりにくくなる（粒度が細分化され、マンパワーも活かしやすくなった）。また、AutoLayoutの範囲も狭まり描画時間が短くなった。そうしたこともあり、導入後のPV数が伸びた。
+ViewControllerは画面遷移と、Viewライフサイクルの処理によって肥大化する。
+ViewControllerはStoryboardでなくXibで作成する。
+
+云々。難しいのでまた今度
+[導入支援用のライブラリ](https://github.com/mercari/Mew)も公開されている。
+参考：https://qiita.com/yimajo/items/c16f54955b18fac19b50
